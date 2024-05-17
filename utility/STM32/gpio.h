@@ -128,8 +128,10 @@ typedef enum
     RF24_PG13,
     RF24_PG14,
     RF24_PG15,
-} rf24_pin;
+	RF24_PIN_INVALID
+} rf24_gpio_pin_t;
 
+rf24_gpio_pin_t encode_pin(GPIO_TypeDef* port, uint16_t pin);
 GPIO_TypeDef* decode_pin(uint8_t pin, uint16_t* decoded_pin);
 
 void digitalWrite(uint8_t pin, uint8_t value);
