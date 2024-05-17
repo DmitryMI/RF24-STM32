@@ -8,6 +8,7 @@ set(EXAMPLES_LIST
     streamingData
     multiceiverDemo
     scanner
+    interruptConfigure
 )
 
 project(RF24Examples CXX)
@@ -22,13 +23,6 @@ include(../cmake/AutoConfig_RF24_DRIVER.cmake)
 
 find_library(RF24 rf24 REQUIRED)
 message(STATUS "using RF24 library: ${RF24}")
-
-# conditionally append "interruptConfigure" to the EXAMPLES_LIST
-if("${RF24_DRIVER}" STREQUAL "MRAA" OR "${RF24_DRIVER}" STREQUAL "wiringPi" OR "${LibPIGPIO}" STREQUAL "LibPIGPIO-NOTFOUND")
-    message(STATUS "Skipping interruptConfigure.cpp example as it is incompatible with selected driver library")
-else() # not using MRAA or wiringPi drivers (or pigpio lib was found)
-    list(APPEND EXAMPLES_LIST interruptConfigure)
-endif()
 
 
 set(linked_libs 
@@ -52,26 +46,19 @@ elseif("${RF24_DRIVER}" STREQUAL "wiringPi")
     else()
         message(FATAL "Lib ${RF24_DRIVER} not found.")
     endif()
-elseif(NOT "${LibPIGPIO}" STREQUAL "LibPIGPIO-NOTFOUND" AND NOT DEFINED RF24_NO_INTERUPT)
-    if(NOT "${RF24_DRIVER}" STREQUAL "pigpio")
-        message(STATUS "linking to ${LibPIGPIO} for interrupt support")
-    else()
+elseif("${RF24_DRIVER}" STREQUAL "pigpio")
+    if(NOT "${LibPIGPIO}" STREQUAL "LibPIGPIO-NOTFOUND")
         message(STATUS "linking to ${LibPIGPIO}")
+        # linking to pigpio requires pthread to be listed as last linked lib
+        list(APPEND linked_libs ${LibPIGPIO} pthread)
+    else()
+        message(FATAL "Lib ${RF24_DRIVER} not found")
     endif()
-    # linking to pigpio requires pthread to be listed as last linked lib
-    list(APPEND linked_libs ${LibPIGPIO} pthread)
-else()
-    message(STATUS "Disabling IRQ pin support")
 endif()
 
 foreach(example ${EXAMPLES_LIST})
     #make a target
     add_executable(${example} ${example}.cpp)
-    
-    # avoid including interrupt.h when pigpio is not available
-    if("${LibPIGPIO}" STREQUAL "LibPIGPIO-NOTFOUND" OR DEFINED RF24_NO_INTERRUPT)
-        target_compile_definitions(${example} PUBLIC RF24_NO_INTERRUPT)
-    endif()
 
     target_link_libraries(${example} PUBLIC ${linked_libs})
 endforeach()
